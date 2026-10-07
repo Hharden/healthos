@@ -1,0 +1,1286 @@
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,6 +1,7 @@
+ "use client";
+ 
+ import { useEffect, useState } from "react";
++import { patientProfiles, type PatientId } from "@/app/data/patients";
+ 
+ import {
+   Activity,
+@@ -51,39 +52,6 @@
+   | "approval"
+   | "active";
+ 
+-const heartRateData = [
+-  { day: "Sep 5", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 6", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 7", bpm: 56, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 8", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 9", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 10", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 11", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 12", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 13", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 14", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 15", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 16", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 17", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 18", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 19", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 20", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 21", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 22", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 23", bpm: 56, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 24", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 25", bpm: 60, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 26", bpm: 58, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 27", bpm: 57, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 28", bpm: 60, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 29", bpm: 61, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Sep 30", bpm: 59, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Oct 1", bpm: 60, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Oct 2", bpm: 61, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Oct 3", bpm: 62, baselineLow: 56, baselineHigh: 64 },
+-  { day: "Oct 4", bpm: 62, baselineLow: 56, baselineHigh: 64 },
+-];
+-
+ const navGroups = [
+   {
+     label: "Overview",
+@@ -127,29 +95,6 @@
+   },
+ ];
+ 
+-const investigationSteps = [
+-  {
+-    number: 1,
+-    title: "Reviewing resting heart-rate trend",
+-    detail: "30 days of wearable data",
+-  },
+-  {
+-    number: 2,
+-    title: "Reviewing sleep pattern",
+-    detail: "Recent sleep duration",
+-  },
+-  {
+-    number: 3,
+-    title: "Reviewing activity changes",
+-    detail: "Recent activity compared with usual",
+-  },
+-  {
+-    number: 4,
+-    title: "Checking whether the signals overlap",
+-    detail: "Looking for changes during the same period",
+-  },
+-];
+-
+ export default function HomePage() {
+   const [activeNav, setActiveNav] = useState("Health overview");
+   const [agentExpanded, setAgentExpanded] = useState(false);
+@@ -160,13 +105,36 @@
+   const [investigationProgress, setInvestigationProgress] = useState(0);
+   const [heartRateRange, setHeartRateRange] = useState("14D");
+   const [mobileNavOpen, setMobileNavOpen] = useState(false);
++  const [selectedPatientId, setSelectedPatientId] = useState<PatientId>("jordan");
+ 
+-  const visibleHeartRateData =
+-    heartRateRange === "7D"
+-      ? heartRateData.slice(-7)
+-      : heartRateRange === "30D"
+-        ? heartRateData
+-        : heartRateData.slice(-14);
++  const selectedPatient = patientProfiles[selectedPatientId];
++  const visiblePrimaryMetricData =
++    selectedPatientId === "jordan"
++      ? heartRateRange === "7D"
++        ? selectedPatient.primaryMetric.data.slice(-7)
++        : heartRateRange === "30D"
++          ? selectedPatient.primaryMetric.data
++          : selectedPatient.primaryMetric.data.slice(-14)
++      : selectedPatient.primaryMetric.data;
++
++  const signalIcons = {
++    heart: HeartPulse,
++    clock: Clock3,
++    activity: Activity,
++    droplet: Activity,
++    baby: UserRound,
++    pill: Pill,
++  };
++
++  useEffect(() => {
++    setAgentExpanded(false);
++    setShowSources(false);
++    setDismissed(false);
++    setAgentStep("idle");
++    setMonitoringActive(false);
++    setInvestigationProgress(0);
++    setHeartRateRange("14D");
++  }, [selectedPatientId]);
+ 
+   useEffect(() => {
+     if (!agentExpanded || agentStep !== "investigating") {
+@@ -332,7 +300,7 @@
+               </div>
+ 
+               <div className="min-w-0 flex-1">
+-                <div className="truncate text-sm font-medium">Jordan</div>
++                <div className="truncate text-sm font-medium">{selectedPatient.name}</div>
+                 <div className="text-xs text-slate-600">Health profile</div>
+               </div>
+ 
+@@ -451,7 +419,26 @@
+             </div>
+ 
+             <div className="flex items-center gap-3">
+-              <div className="hidden rounded-full border border-[#BFD2EA] bg-[#F4F8FD] px-3 py-1.5 text-xs font-medium text-[#17479E] sm:block">
++              <div className="hidden items-center gap-2 sm:flex">
++                <label htmlFor="demo-patient" className="text-xs font-medium text-slate-600">
++                  Demo patient
++                </label>
++                <div className="relative">
++                  <select
++                    id="demo-patient"
++                    value={selectedPatientId}
++                    onChange={(event) => setSelectedPatientId(event.target.value as PatientId)}
++                    className="min-h-11 appearance-none rounded-lg border border-[#BFD2EA] bg-[#F4F8FD] py-2 pl-3 pr-9 text-sm font-medium text-[#17479E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17479E]"
++                  >
++                    <option value="jordan">Jordan</option>
++                    <option value="maya">Maya</option>
++                    <option value="alex">Alex</option>
++                  </select>
++                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#17479E]" aria-hidden="true" />
++                </div>
++              </div>
++
++              <div className="hidden rounded-full border border-[#BFD2EA] bg-[#F4F8FD] px-3 py-1.5 text-xs font-medium text-[#17479E] lg:block">
+                 Illustrative demo data
+               </div>
+ 
+@@ -471,10 +458,10 @@
+               </button>
+ 
+               <div
+-                aria-label="Jordan profile"
++                aria-label={`${selectedPatient.name} profile`}
+                 className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700"
+               >
+-                JD
++                {selectedPatient.initials}
+               </div>
+             </div>
+           </header>
+@@ -483,7 +470,7 @@
+             {/* Greeting */}
+             <div className="mb-7">
+               <h1 className="text-[30px] font-semibold tracking-tight text-slate-900">
+-                Good morning, Jordan.
++                Good morning, {selectedPatient.name}.
+               </h1>
+ 
+               <p className="mt-1.5 text-base leading-6 text-slate-600">
+@@ -522,10 +509,10 @@
+ 
+                     <div>
+                       <div className="text-xl font-semibold text-slate-900">
+-                        Stable
++                        {selectedPatient.status.label}
+                       </div>
+                       <div className="text-sm text-slate-600">
+-                        No urgent signals detected
++                        {selectedPatient.status.detail}
+                       </div>
+                     </div>
+                   </div>
+@@ -537,13 +524,12 @@
+                         aria-hidden="true"
+                       />
+                       <span className="text-sm font-medium text-[#17479E]">
+-                        Agent watching a non-urgent change
++                        {selectedPatient.status.watchLabel}
+                       </span>
+                     </div>
+ 
+                     <div className="mt-1.5 text-sm leading-5 text-slate-600">
+-                      Your overall status is stable while the agent reviews a
+-                      gradual resting heart-rate trend.
++                      {selectedPatient.status.watchDetail}
+                     </div>
+                   </div>
+ 
+@@ -551,7 +537,7 @@
+                     <div className="flex items-center justify-between text-sm">
+                       <span className="text-slate-600">Last updated</span>
+                       <span className="font-medium text-slate-800">
+-                        12 minutes ago
++                        {selectedPatient.status.updated}
+                       </span>
+                     </div>
+                   </div>
+@@ -566,60 +552,32 @@
+                       Today’s medications
+                     </CardTitle>
+ 
+-                    <Pill
+-                      className="h-5 w-5 text-slate-500"
+-                      aria-hidden="true"
+-                    />
++                    <Pill className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                   </div>
+                 </CardHeader>
+ 
+                 <CardContent>
+                   <div className="space-y-4">
+-                    <div className="flex items-center justify-between gap-3">
+-                      <div className="flex items-center gap-3">
+-                        <div
+-                          aria-hidden="true"
+-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100"
+-                        >
+-                          <Pill className="h-4 w-4 text-slate-600" />
+-                        </div>
+-
+-                        <div>
+-                          <div className="text-sm font-medium">
+-                            Lisinopril
+-                          </div>
+-                          <div className="text-xs text-slate-600">
+-                            10 mg · 8:00 AM
++                    {selectedPatient.medications.map((medication) => (
++                      <div key={`${medication.name}-${medication.time}`} className="flex items-center justify-between gap-3">
++                        <div className="flex items-center gap-3">
++                          <div aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100">
++                            <Pill className="h-4 w-4 text-slate-600" />
+                           </div>
+-                        </div>
+-                      </div>
+-
+-                      <span className="rounded-full bg-[#E8F1FB] px-2.5 py-1.5 text-xs font-medium text-[#17479E]">
+-                        Reminder set
+-                      </span>
+-                    </div>
+-
+-                    <div className="flex items-center justify-between gap-3">
+-                      <div className="flex items-center gap-3">
+-                        <div
+-                          aria-hidden="true"
+-                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100"
+-                        >
+-                          <Pill className="h-4 w-4 text-slate-600" />
+-                        </div>
+ 
+-                        <div>
+-                          <div className="text-sm font-medium">Vitamin D</div>
+-                          <div className="text-xs text-slate-600">
+-                            1000 IU · 8:00 AM
++                          <div>
++                            <div className="text-sm font-medium">{medication.name}</div>
++                            <div className="text-xs text-slate-600">
++                              {medication.dose} · {medication.time}
++                            </div>
+                           </div>
+                         </div>
+-                      </div>
+ 
+-                      <span className="rounded-full bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700">
+-                        Scheduled
+-                      </span>
+-                    </div>
++                        <span className={`rounded-full px-2.5 py-1.5 text-xs font-medium ${medication.tone === "blue" ? "bg-[#E8F1FB] text-[#17479E]" : "bg-slate-100 text-slate-700"}`}>
++                          {medication.status}
++                        </span>
++                      </div>
++                    ))}
+                   </div>
+ 
+                   <div className="mt-5 text-xs leading-5 text-slate-600">
+@@ -636,48 +594,33 @@
+                       Next appointment
+                     </CardTitle>
+ 
+-                    <CalendarDays
+-                      className="h-5 w-5 text-slate-500"
+-                      aria-hidden="true"
+-                    />
++                    <CalendarDays className="h-5 w-5 text-slate-500" aria-hidden="true" />
+                   </div>
+                 </CardHeader>
+ 
+                 <CardContent>
+-                  <div className="flex items-start gap-3">
+-                    <div
+-                      aria-hidden="true"
+-                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#E8F1FB]"
+-                    >
+-                      <Stethoscope className="h-5 w-5 text-[#17479E]" />
+-                    </div>
+-
+-                    <div>
+-                      <div className="text-base font-medium">
+-                        Primary care follow-up
+-                      </div>
+-
+-                      <div className="mt-1 text-sm text-slate-600">
+-                        Dr. Morgan Lee
+-                      </div>
++                  <div className="text-base font-semibold text-slate-900">
++                    {selectedPatient.appointment.title}
++                  </div>
+ 
+-                      <div className="mt-2.5 flex items-center gap-2 text-sm text-slate-600">
+-                        <CalendarDays
+-                          className="h-4 w-4"
+-                          aria-hidden="true"
+-                        />
+-                        October 18 · 9:30 AM
+-                      </div>
++                  <div className="mt-1 text-sm text-slate-700">
++                    {selectedPatient.appointment.clinician}
++                  </div>
+ 
+-                      <div className="mt-1.5 text-sm text-slate-600">
+-                        Baylor Scott & White · Virtual
+-                      </div>
++                  <div className="mt-4 space-y-2.5 text-sm text-slate-600">
++                    <div className="flex items-start gap-2.5">
++                      <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
++                      <span>{selectedPatient.appointment.dateTime}</span>
++                    </div>
++                    <div className="flex items-start gap-2.5">
++                      <Home className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
++                      <span>{selectedPatient.appointment.location}</span>
+                     </div>
+                   </div>
+ 
+-                  <div className="mt-5 flex items-center justify-between border-t border-slate-200 pt-3">
++                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                     <span className="text-sm text-slate-600">
+-                      No preparation required
++                      {selectedPatient.appointment.preparation}
+                     </span>
+ 
+                     <button
+@@ -691,8 +634,6 @@
+               </Card>
+             </div>
+ 
+-            
+-
+             {/* Lower dashboard */}
+             <div className="mt-6 grid gap-5 xl:grid-cols-[1.4fr_0.9fr]">
+               {/* Left column */}
+@@ -707,13 +648,13 @@
+                         </CardTitle>
+ 
+                         <div className="mt-1 text-sm text-slate-600">
+-                          Resting heart rate · personal baseline
++                          {selectedPatient.primaryMetric.title} · {selectedPatient.primaryMetric.subtitle}
+                         </div>
+                       </div>
+ 
+                       <div
+                         role="group"
+-                        aria-label="Heart rate time range"
++                        aria-label={`${selectedPatient.primaryMetric.title} time range`}
+                         className="flex rounded-lg border border-slate-300 bg-slate-50 p-0.5"
+                       >
+                         {["7D", "14D", "30D"].map((range) => (
+@@ -739,21 +680,21 @@
+                     <div className="mb-4 flex items-end justify-between">
+                       <div>
+                         <div className="text-3xl font-semibold tracking-tight">
+-                          62 bpm
++                          {selectedPatient.primaryMetric.latest}{selectedPatientId === "jordan" ? " bpm" : selectedPatientId === "alex" ? " mg/dL" : " weeks"}
+                         </div>
+ 
+                         <div className="mt-1 text-sm text-slate-600">
+-                          Latest reading · Oct 4
++                          {selectedPatient.primaryMetric.latestLabel}
+                         </div>
+                       </div>
+ 
+                       <div className="text-right">
+                         <div className="text-sm text-slate-600">
+-                          Personal baseline
++                          {selectedPatient.primaryMetric.baselineLabel}
+                         </div>
+ 
+                         <div className="text-sm font-medium text-slate-800">
+-                          56–64 bpm
++                          {selectedPatient.primaryMetric.baseline}
+                         </div>
+                       </div>
+                     </div>
+@@ -761,7 +702,7 @@
+                     <ChartContainer
+                       config={{
+                         bpm: {
+-                          label: "Heart rate",
++                          label: selectedPatient.primaryMetric.seriesLabel,
+                           color: "#0090BA",
+                         },
+                       }}
+@@ -769,7 +710,7 @@
+                     >
+                       <AreaChart
+                         accessibilityLayer
+-                        data={visibleHeartRateData}
++                        data={visiblePrimaryMetricData}
+                         margin={{
+                           left: -18,
+                           right: 8,
+@@ -789,7 +730,7 @@
+                         />
+ 
+                         <YAxis
+-                          domain={[52, 68]}
++                          domain={selectedPatient.primaryMetric.domain}
+                           tickLine={false}
+                           axisLine={false}
+                           tickMargin={8}
+@@ -821,7 +762,7 @@
+                         />
+ 
+                         <Area
+-                          dataKey="bpm"
++                          dataKey="value"
+                           type="monotone"
+                           fill="var(--color-bpm)"
+                           fillOpacity={0.15}
+@@ -839,7 +780,7 @@
+                           className="h-2.5 w-2.5 rounded-full bg-[#0090BA]"
+                           aria-hidden="true"
+                         />
+-                        Resting heart rate
++                        {selectedPatient.primaryMetric.seriesLabel}
+                       </div>
+ 
+                       <div className="flex items-center gap-2">
+@@ -847,14 +788,12 @@
+                           className="h-2.5 w-5 rounded-sm bg-[#DDEFF4]"
+                           aria-hidden="true"
+                         />
+-                        Personal baseline
++                        {selectedPatient.primaryMetric.baselineSeriesLabel}
+                       </div>
+                     </div>
+ 
+                     <p className="sr-only">
+-                      Resting heart rate is currently 62 beats per minute. The
+-                      personal baseline is 56 to 64 beats per minute. The chart
+-                      shows a gradual increase over the selected time period.
++                      {selectedPatient.primaryMetric.accessibility}
+                     </p>
+                   </CardContent>
+                 </Card>
+@@ -886,142 +825,40 @@
+ 
+                   <CardContent className="pt-0">
+                     <div className="grid gap-3 md:grid-cols-3">
+-                      {/* Resting heart rate */}
+-                      <div className="rounded-xl border border-slate-300 bg-white p-4">
+-                        <div className="flex items-center justify-between gap-2">
+-                          <div className="flex items-center gap-2">
+-                            <div
+-                              aria-hidden="true"
+-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E8F1FB]"
+-                            >
+-                              <HeartPulse className="h-4 w-4 text-[#17479E]" />
+-                            </div>
+-
+-                            <span className="text-sm font-medium text-slate-700">
+-                              Resting HR
+-                            </span>
+-                          </div>
++                      {selectedPatient.connectedSignals.map((signal) => {
++                        const SignalIcon = signalIcons[signal.icon];
+ 
+-                          <span className="text-xs font-semibold text-[#17479E]">
+-                            ↑ Trending
+-                          </span>
+-                        </div>
+-
+-                        <div className="mt-3 flex items-end gap-2">
+-                          <span className="text-xl font-semibold tracking-tight text-slate-800">
+-                            57 → 62
+-                          </span>
+-
+-                          <span className="mb-0.5 text-sm text-slate-600">
+-                            bpm
+-                          </span>
+-                        </div>
+-
+-                        <div
+-                          aria-hidden="true"
+-                          className="mt-3 flex h-7 items-end gap-1"
+-                        >
+-                          {[9, 11, 10, 13, 12, 16, 15, 19, 18, 22].map(
+-                            (height, index) => (
+-                              <div
+-                                key={index}
+-                                className="flex-1 rounded-sm bg-[#0090BA]/20"
+-                                style={{ height: `${height}px` }}
+-                              />
+-                            ),
+-                          )}
+-                        </div>
+-
+-                        <div className="mt-1.5 text-sm leading-5 text-slate-600">
+-                          Gradually increasing over 10 days
+-                        </div>
+-                      </div>
+-
+-                      {/* Sleep */}
+-                      <div className="rounded-xl border border-slate-300 bg-white p-4">
+-                        <div className="flex items-center gap-2">
+-                          <div
+-                            aria-hidden="true"
+-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100"
+-                          >
+-                            <Clock3 className="h-4 w-4 text-slate-600" />
+-                          </div>
+-
+-                          <span className="text-sm font-medium text-slate-700">
+-                            Sleep
+-                          </span>
+-                        </div>
++                        return (
++                          <div key={signal.label} className="rounded-xl border border-slate-300 bg-white p-4">
++                            <div className="flex items-center justify-between gap-2">
++                              <div className="flex items-center gap-2">
++                                <div aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E8F1FB]">
++                                  <SignalIcon className="h-4 w-4 text-[#17479E]" />
++                                </div>
+ 
+-                        <div className="mt-3 flex items-end gap-2">
+-                          <span className="text-xl font-semibold tracking-tight text-slate-800">
+-                            7.8 → 7.1
+-                          </span>
++                                <span className="text-sm font-medium text-slate-700">{signal.label}</span>
++                              </div>
+ 
+-                          <span className="mb-0.5 text-sm text-slate-600">
+-                            hrs
+-                          </span>
+-                        </div>
++                              {signal.trend && (
++                                <span className="text-xs font-semibold text-[#17479E]">{signal.trend}</span>
++                              )}
++                            </div>
+ 
+-                        <div
+-                          aria-hidden="true"
+-                          className="mt-3 flex h-7 items-end gap-1"
+-                        >
+-                          {[22, 21, 23, 20, 19, 18, 20, 17, 16, 14].map(
+-                            (height, index) => (
+-                              <div
+-                                key={index}
+-                                className="flex-1 rounded-sm bg-slate-200"
+-                                style={{ height: `${height}px` }}
+-                              />
+-                            ),
+-                          )}
+-                        </div>
++                            <div className="mt-3 flex items-end gap-2">
++                              <span className="text-xl font-semibold tracking-tight text-slate-800">{signal.value}</span>
++                              {signal.unit && <span className="mb-0.5 text-sm text-slate-600">{signal.unit}</span>}
++                            </div>
+ 
+-                        <div className="mt-1.5 text-sm leading-5 text-slate-600">
+-                          Gradually below your usual range
+-                        </div>
+-                      </div>
++                            <div aria-hidden="true" className="mt-3 flex h-7 items-end gap-1">
++                              {signal.bars.map((height, index) => (
++                                <div key={index} className="flex-1 rounded-sm bg-[#0090BA]/20" style={{ height: `${height}px` }} />
++                              ))}
++                            </div>
+ 
+-                      {/* Activity */}
+-                      <div className="rounded-xl border border-slate-300 bg-white p-4">
+-                        <div className="flex items-center gap-2">
+-                          <div
+-                            aria-hidden="true"
+-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100"
+-                          >
+-                            <Activity className="h-4 w-4 text-slate-600" />
++                            <div className="mt-1.5 text-sm leading-5 text-slate-600">{signal.detail}</div>
+                           </div>
+-
+-                          <span className="text-sm font-medium text-slate-700">
+-                            Activity
+-                          </span>
+-                        </div>
+-
+-                        <div className="mt-3 flex items-end gap-2">
+-                          <span className="text-xl font-semibold tracking-tight text-slate-800">
+-                            Usual → Lower
+-                          </span>
+-                        </div>
+-
+-                        <div
+-                          aria-hidden="true"
+-                          className="mt-3 flex h-7 items-end gap-1"
+-                        >
+-                          {[21, 22, 20, 23, 19, 17, 16, 15, 13, 12].map(
+-                            (height, index) => (
+-                              <div
+-                                key={index}
+-                                className="flex-1 rounded-sm bg-slate-200"
+-                                style={{ height: `${height}px` }}
+-                              />
+-                            ),
+-                          )}
+-                        </div>
+-
+-                        <div className="mt-1.5 text-sm leading-5 text-slate-600">
+-                          Recent activity differs from your usual pattern
+-                        </div>
+-                      </div>
++                        );
++                      })}
+                     </div>
+ 
+                     {/* Agent interpretation */}
+@@ -1078,12 +915,7 @@
+ 
+                   <CardContent>
+                     <div className="grid grid-cols-2 gap-3">
+-                      {[
+-                        ["Resting HR", "56–64 bpm"],
+-                        ["Sleep", "7h 12m"],
+-                        ["Steps", "7.8k/day"],
+-                        ["BP", "128/82"],
+-                      ].map(([label, value]) => (
++                      {selectedPatient.baselines.map(([label, value]) => (
+                         <div
+                           key={label}
+                           className="rounded-lg bg-slate-50 p-3.5"
+@@ -1137,19 +969,16 @@
+                             </div>
+ 
+                             <span className="rounded-full bg-[#FFF7DF] px-2.5 py-1 text-xs font-medium text-slate-800">
+-                              Moderate confidence
++                              {selectedPatient.agent.confidence}
+                             </span>
+                           </div>
+ 
+                           <div className="mt-1.5 text-base font-semibold text-slate-900">
+-                            Your resting heart rate has gradually increased
+-                            over the last 10 days.
++                            {selectedPatient.agent.insightTitle}
+                           </div>
+ 
+                           <div className="mt-1 text-sm leading-5 text-slate-600">
+-                            The trend remains within your personal baseline,
+-                            but the agent found it worth reviewing alongside
+-                            recent sleep and activity changes.
++                            {selectedPatient.agent.insightDetail}
+                           </div>
+ 
+                           <div className="mt-2 text-sm font-medium text-[#17479E]">
+@@ -1223,11 +1052,11 @@
+                             </div>
+ 
+                             <div className="mt-1.5 text-sm leading-5 text-slate-600">
+-                              Resting heart rate
++                              {selectedPatient.agent.monitoringTitle}
+                             </div>
+ 
+                             <div className="mt-2 text-sm leading-5 text-slate-700">
+-                              Comparing new readings against your 56–64 bpm
++                              Comparing new readings against your {selectedPatient.agent.monitoringBaseline}
+                               personal baseline.
+                             </div>
+                           </div>
+@@ -1240,7 +1069,7 @@
+                             </span>
+ 
+                             <span className="font-medium text-slate-800">
+-                              Next check-in · Oct 11
++                              Next check-in · {selectedPatient.agent.nextCheckIn}
+                             </span>
+                           </div>
+                         </div>
+@@ -1483,39 +1312,31 @@
+                       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                         <div>
+                           <div className="text-lg font-semibold text-slate-900">
+-                            Resting heart rate is trending upward
++                            {selectedPatient.agent.idleTitle}
+                           </div>
+ 
+                           <div className="mt-2 text-sm leading-6 text-slate-600">
+-                            Your recent readings have moved from around 57 bpm
+-                            to 62 bpm. Your personal baseline is currently
+-                            56–64 bpm.
++                            {selectedPatient.agent.idleDescription}
+                           </div>
+                         </div>
+ 
+                         <div className="shrink-0 rounded-lg bg-white px-4 py-3 text-left shadow-sm sm:text-right">
+                           <div className="text-2xl font-semibold text-slate-900">
+-                            62
++                            {selectedPatient.agent.currentValue}
+                           </div>
+ 
+                           <div className="text-xs font-medium uppercase tracking-wide text-slate-600">
+-                            bpm
++                            {selectedPatient.agent.currentUnit}
+                           </div>
+                         </div>
+                       </div>
+ 
+                       <div className="mt-5 flex flex-wrap gap-2">
+-                        <span className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700">
+-                          Wearable updated 12 min ago
+-                        </span>
+-
+-                        <span className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700">
+-                          Personal baseline
+-                        </span>
+-
+-                        <span className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700">
+-                          30-day trend
+-                        </span>
++                        {selectedPatient.agent.tags.map((tag) => (
++                          <span key={tag} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700">
++                            {tag}
++                          </span>
++                        ))}
+                       </div>
+                     </div>
+ 
+@@ -1594,7 +1415,7 @@
+                     </div>
+ 
+                     <div className="space-y-3">
+-                      {investigationSteps.map((step) => {
++                      {selectedPatient.agent.steps.map((step) => {
+                         const completed =
+                           investigationProgress >= step.number;
+ 
+@@ -1673,9 +1494,7 @@
+                           </div>
+ 
+                           <div className="mt-2 text-sm leading-6 text-slate-700">
+-                            Resting heart rate increased from 57 → 62 bpm
+-                            while sleep decreased from 7.8 → 7.1 hours and
+-                            recent activity was lower than usual.
++                            {selectedPatient.agent.whatNoticed}
+                           </div>
+                         </div>
+ 
+@@ -1686,10 +1505,7 @@
+                             </div>
+ 
+                             <div className="mt-2 text-sm leading-6 text-slate-700">
+-                              These changes occurred during the same period.
+-                              The resting heart-rate trend remains within your
+-                              personal baseline, and no urgent signal appears
+-                              in the available demo data.
++                              {selectedPatient.agent.whatKnow}
+                             </div>
+                           </div>
+ 
+@@ -1699,8 +1515,7 @@
+                             </div>
+ 
+                             <div className="mt-2 text-sm leading-6 text-slate-700">
+-                              The available data cannot determine whether these
+-                              signals are related or why they changed.
++                              {selectedPatient.agent.whatDontKnow}
+                             </div>
+                           </div>
+                         </div>
+@@ -1745,20 +1560,13 @@
+ </div>
+ 
+ <div className="mt-2 text-sm leading-6 text-slate-600">
+-  I found a coordinated change across several signals. The pattern is
+-  worth watching, but the available data does not establish a medical
+-  cause.
++  {selectedPatient.agent.findingIntro}
+ </div>
+                     </div>
+ 
+                     <div className="rounded-xl border border-slate-300 bg-slate-50 p-5">
+                       <div className="space-y-4">
+-                        {[
+-                          "Resting heart rate increased from 57 → 62 bpm.",
+-                          "Sleep decreased from 7.8 → 7.1 hours during the same period.",
+-                          "Recent activity was lower than your usual pattern.",
+-                          "The signals changed during the same period, but I cannot determine from the available data why they changed.",
+-                        ].map((item) => (
++                        {selectedPatient.agent.findings.map((item) => (
+                           <div
+                             key={item}
+                             className="flex items-start gap-3"
+@@ -1819,17 +1627,11 @@
+                           id="agent-evidence"
+                           className="mt-3 space-y-2.5 border-t border-slate-200 pt-3"
+                         >
+-                          <div className="text-sm leading-5 text-slate-700">
+-                            • Wearable heart-rate readings · Sep 5–Oct 4
+-                          </div>
+-
+-                          <div className="text-sm leading-5 text-slate-700">
+-                            • Personal baseline · 56–64 bpm
+-                          </div>
+-
+-                          <div className="text-sm leading-5 text-slate-700">
+-                            • Sleep and activity context
+-                          </div>
++                          {selectedPatient.agent.evidence.map((item) => (
++                            <div key={item} className="text-sm leading-5 text-slate-700">
++                              • {item}
++                            </div>
++                          ))}
+                         </div>
+                       )}
+                     </div>
+@@ -1889,14 +1691,11 @@
+                           </div>
+ 
+                           <div className="mt-1.5 text-lg font-semibold text-slate-800">
+-                            Continue monitoring for 7 days
++                            {selectedPatient.agent.recommendationTitle}
+                           </div>
+ 
+                           <div className="mt-1.5 text-sm leading-6 text-slate-700">
+-                            Your resting heart rate is still within your
+-                            personal baseline. Because the change is gradual,
+-                            continued monitoring is more appropriate than
+-                            escalating based on the current data alone.
++                            {selectedPatient.agent.recommendationDetail}
+                           </div>
+                         </div>
+                       </div>
+@@ -1908,23 +1707,7 @@
+                       </div>
+ 
+                       <div className="mt-4 space-y-4">
+-                        {[
+-                          {
+-                            title: "The change is gradual",
+-                            detail:
+-                              "Your recent readings increased over multiple days rather than changing suddenly.",
+-                          },
+-                          {
+-                            title: "It remains within your baseline",
+-                            detail:
+-                              "Your current personal range is 56–64 bpm.",
+-                          },
+-                          {
+-                            title: "More data can add context",
+-                            detail:
+-                              "Another week of readings can help determine whether the trend continues or returns toward baseline.",
+-                          },
+-                        ].map((item) => (
++                        {selectedPatient.agent.recommendationReasons.map((item) => (
+                           <div
+                             key={item.title}
+                             className="flex items-start gap-3"
+@@ -2020,9 +1803,7 @@
+                           </div>
+ 
+                           <div className="mt-1.5 text-sm leading-6 text-slate-700">
+-                          I’ve taken over the monitoring you approved. I’ll watch new resting
+-  heart-rate readings, compare them with your personal baseline, and
+-  surface a new insight if the pattern meaningfully changes.
++                            {selectedPatient.agent.monitoringDetail}
+                           </div>
+                         </div>
+                       </div>
+@@ -2044,12 +1825,11 @@
+ 
+                           <div>
+                             <div className="text-sm font-medium text-slate-800">
+-                              Monitoring resting heart rate
++                              {selectedPatient.agent.monitoringTitle}
+                             </div>
+ 
+                             <div className="mt-1 text-sm leading-5 text-slate-600">
+-                              New wearable readings will be compared with your
+-                              56–64 bpm personal baseline.
++                              New readings will be compared with your {selectedPatient.agent.monitoringBaseline} personal baseline.
+                             </div>
+                           </div>
+                         </div>
+@@ -2064,7 +1844,7 @@
+ 
+                           <div>
+                             <div className="text-sm font-medium text-slate-800">
+-                            Next reassessment · October 11
++                              Next reassessment · {selectedPatient.agent.nextCheckIn}
+                             </div>
+ 
+                             <div className="mt-1 text-sm leading-5 text-slate-600">
+diff --git a/app/data/patients.ts b/app/data/patients.ts
+new file mode 100644
+--- /dev/null
++++ b/app/data/patients.ts
++export type PatientId = "jordan" | "maya" | "alex";
++
++type MetricSignal = {
++  label: string;
++  icon: "heart" | "clock" | "activity" | "droplet" | "baby" | "pill";
++  value: string;
++  unit?: string;
++  trend?: string;
++  detail: string;
++  bars: number[];
++};
++
++type PrimaryMetric = {
++  title: string;
++  subtitle: string;
++  latest: string;
++  latestLabel: string;
++  baselineLabel: string;
++  baseline: string;
++  data: { day: string; value: number; baselineLow: number; baselineHigh: number }[];
++  domain: [number, number];
++  seriesLabel: string;
++  baselineSeriesLabel: string;
++  accessibility: string;
++};
++
++type AgentStepData = {
++  number: number;
++  title: string;
++  detail: string;
++};
++
++type PatientProfile = {
++  id: PatientId;
++  name: string;
++  initials: string;
++  status: {
++    label: string;
++    detail: string;
++    watchLabel: string;
++    watchDetail: string;
++    updated: string;
++  };
++  medications: {
++    name: string;
++    dose: string;
++    time: string;
++    status: string;
++    tone: "blue" | "neutral";
++  }[];
++  appointment: {
++    title: string;
++    clinician: string;
++    dateTime: string;
++    location: string;
++    preparation: string;
++  };
++  primaryMetric: PrimaryMetric;
++  connectedSignals: MetricSignal[];
++  baselines: [string, string][];
++  agent: {
++    confidence: string;
++    insightTitle: string;
++    insightDetail: string;
++    idleTitle: string;
++    idleDescription: string;
++    currentValue: string;
++    currentUnit: string;
++    tags: string[];
++    steps: AgentStepData[];
++    whatNoticed: string;
++    whatKnow: string;
++    whatDontKnow: string;
++    findingIntro: string;
++    findings: string[];
++    evidence: string[];
++    recommendationTitle: string;
++    recommendationDetail: string;
++    recommendationReasons: { title: string; detail: string }[];
++    monitoringTitle: string;
++    monitoringDetail: string;
++    monitoringBaseline: string;
++    nextCheckIn: string;
++  };
++};
++
++const jordanHeartRate = [
++  ["Sep 5", 57], ["Sep 6", 58], ["Sep 7", 56], ["Sep 8", 57],
++  ["Sep 9", 58], ["Sep 10", 57], ["Sep 11", 59], ["Sep 12", 58],
++  ["Sep 13", 57], ["Sep 14", 59], ["Sep 15", 58], ["Sep 16", 59],
++  ["Sep 17", 57], ["Sep 18", 58], ["Sep 19", 59], ["Sep 20", 58],
++  ["Sep 21", 57], ["Sep 22", 58], ["Sep 23", 56], ["Sep 24", 59],
++  ["Sep 25", 60], ["Sep 26", 58], ["Sep 27", 57], ["Sep 28", 60],
++  ["Sep 29", 61], ["Sep 30", 59], ["Oct 1", 60], ["Oct 2", 61],
++  ["Oct 3", 62], ["Oct 4", 62],
++].map(([day, value]) => ({
++  day: day as string,
++  value: value as number,
++  baselineLow: 56,
++  baselineHigh: 64,
++}));
++
++const mayaPregnancy = [
++  ["Week 20", 20], ["Week 21", 21], ["Week 22", 22], ["Week 23", 23], ["Week 24", 24],
++].map(([day, value]) => ({
++  day: day as string,
++  value: value as number,
++  baselineLow: 20,
++  baselineHigh: 24,
++}));
++
++const alexGlucose = [
++  ["Sep 30", 112], ["Oct 1", 118], ["Oct 2", 124], ["Oct 3", 136], ["Oct 4", 142],
++].map(([day, value]) => ({
++  day: day as string,
++  value: value as number,
++  baselineLow: 95,
++  baselineHigh: 135,
++}));
++
++export const patientProfiles: Record<PatientId, PatientProfile> = {
++  jordan: {
++    id: "jordan",
++    name: "Jordan",
++    initials: "JD",
++    status: {
++      label: "Stable",
++      detail: "No urgent signals detected",
++      watchLabel: "Agent watching a non-urgent change",
++      watchDetail: "Your overall status is stable while the agent reviews a gradual resting heart-rate trend.",
++      updated: "12 minutes ago",
++    },
++    medications: [
++      { name: "Lisinopril", dose: "10 mg", time: "8:00 AM", status: "Reminder set", tone: "blue" },
++      { name: "Vitamin D", dose: "1000 IU", time: "8:00 AM", status: "Scheduled", tone: "neutral" },
++    ],
++    appointment: {
++      title: "Primary care follow-up",
++      clinician: "Dr. Morgan Lee",
++      dateTime: "October 18 · 9:30 AM",
++      location: "Baylor Scott & White · Virtual",
++      preparation: "No preparation required",
++    },
++    primaryMetric: {
++      title: "Resting heart rate",
++      subtitle: "personal baseline",
++      latest: "62",
++      latestLabel: "Latest reading · Oct 4",
++      baselineLabel: "Personal baseline",
++      baseline: "56–64 bpm",
++      data: jordanHeartRate,
++      domain: [52, 68],
++      seriesLabel: "Resting heart rate",
++      baselineSeriesLabel: "Personal baseline",
++      accessibility: "Resting heart rate is currently 62 beats per minute. The personal baseline is 56 to 64 beats per minute. The chart shows a gradual increase over the selected time period.",
++    },
++    connectedSignals: [
++      { label: "Resting HR", icon: "heart", value: "57 → 62", unit: "bpm", trend: "↑ Trending", detail: "Gradually increasing over 10 days", bars: [9, 11, 10, 13, 12, 16, 15, 19, 18, 22] },
++      { label: "Sleep", icon: "clock", value: "7.8 → 7.1", unit: "hrs", detail: "Gradually below your usual range", bars: [22, 21, 23, 20, 19, 18, 20, 17, 16, 14] },
++      { label: "Activity", icon: "activity", value: "Usual → Lower", detail: "Recent activity differs from your usual pattern", bars: [21, 22, 20, 23, 19, 17, 16, 15, 13, 12] },
++    ],
++    baselines: [["Resting HR", "56–64 bpm"], ["Sleep", "7h 12m"], ["Steps", "7.8k/day"], ["BP", "128/82"]],
++    agent: {
++      confidence: "Moderate confidence",
++      insightTitle: "Your resting heart rate has gradually increased over the last 10 days.",
++      insightDetail: "The trend remains within your personal baseline, but the agent found it worth reviewing alongside recent sleep and activity changes.",
++      idleTitle: "Resting heart rate is trending upward",
++      idleDescription: "Your recent readings have moved from around 57 bpm to 62 bpm. Your personal baseline is currently 56–64 bpm.",
++      currentValue: "62",
++      currentUnit: "bpm",
++      tags: ["Wearable updated 12 min ago", "Personal baseline", "30-day trend"],
++      steps: [
++        { number: 1, title: "Reviewing resting heart-rate trend", detail: "30 days of wearable data" },
++        { number: 2, title: "Reviewing sleep pattern", detail: "Recent sleep duration" },
++        { number: 3, title: "Reviewing activity changes", detail: "Recent activity compared with usual" },
++        { number: 4, title: "Checking whether the signals overlap", detail: "Looking for changes during the same period" },
++      ],
++      whatNoticed: "Resting heart rate increased from 57 → 62 bpm while sleep decreased from 7.8 → 7.1 hours and recent activity was lower than usual.",
++      whatKnow: "These changes occurred during the same period. The resting heart-rate trend remains within your personal baseline, and no urgent signal appears in the available demo data.",
++      whatDontKnow: "The available data cannot determine whether these signals are related or why they changed.",
++      findingIntro: "I found a coordinated change across several signals. The pattern is worth watching, but the available data does not establish a medical cause.",
++      findings: [
++        "Resting heart rate increased from 57 → 62 bpm.",
++        "Sleep decreased from 7.8 → 7.1 hours during the same period.",
++        "Recent activity was lower than your usual pattern.",
++        "The signals changed during the same period, but I cannot determine from the available data why they changed.",
++      ],
++      evidence: ["Wearable heart-rate readings · Sep 5–Oct 4", "Personal baseline · 56–64 bpm", "Sleep and activity context"],
++      recommendationTitle: "Continue monitoring for 7 days",
++      recommendationDetail: "Your resting heart rate is still within your personal baseline. Because the change is gradual, continued monitoring is more appropriate than escalating based on the current data alone.",
++      recommendationReasons: [
++        { title: "The change is gradual", detail: "Your recent readings increased over multiple days rather than changing suddenly." },
++        { title: "It remains within your baseline", detail: "Your current personal range is 56–64 bpm." },
++        { title: "More data can add context", detail: "Another week of readings can help determine whether the trend continues or returns toward baseline." },
++      ],
++      monitoringTitle: "Monitoring resting heart rate",
++      monitoringDetail: "I’ll watch new resting heart-rate readings, compare them with your personal baseline, and surface a new insight if the pattern meaningfully changes.",
++      monitoringBaseline: "56–64 bpm",
++      nextCheckIn: "Oct 11",
++    },
++  },
++  maya: {
++    id: "maya",
++    name: "Maya",
++    initials: "MY",
++    status: {
++      label: "On track",
++      detail: "No urgent signals detected",
++      watchLabel: "Agent watching pregnancy care",
++      watchDetail: "Your pregnancy care is on track while the agent keeps upcoming care and recent maternal signals in view.",
++      updated: "18 minutes ago",
++    },
++    medications: [
++      { name: "Prenatal vitamin", dose: "1 tablet", time: "8:00 AM", status: "Reminder set", tone: "blue" },
++      { name: "Iron", dose: "27 mg", time: "8:00 AM", status: "Scheduled", tone: "neutral" },
++    ],
++    appointment: {
++      title: "Prenatal visit",
++      clinician: "Dr. Priya Shah",
++      dateTime: "October 10 · 10:00 AM",
++      location: "Baylor Scott & White Women’s Health",
++      preparation: "Bring current medication list",
++    },
++    primaryMetric: {
++      title: "Pregnancy progress",
++      subtitle: "care milestone",
++      latest: "24",
++      latestLabel: "Current gestational week",
++      baselineLabel: "Care milestone",
++      baseline: "Week 24",
++      data: mayaPregnancy,
++      domain: [19, 25],
++      seriesLabel: "Gestational week",
++      baselineSeriesLabel: "Care milestone range",
++      accessibility: "Maya is currently at week 24 of pregnancy. The chart shows progression from week 20 through week 24.",
++    },
++    connectedSignals: [
++      { label: "Pregnancy", icon: "baby", value: "Week 24", detail: "Entering the next care milestone", bars: [12, 14, 16, 19, 22] },
++      { label: "Blood pressure", icon: "heart", value: "118/72", detail: "Within your recent range", bars: [18, 18, 19, 20, 20] },
++      { label: "Weight", icon: "activity", value: "+0.8", unit: "lb", detail: "Gradual change since last check", bars: [12, 13, 14, 16, 17] },
++    ],
++    baselines: [["BP", "118/72"], ["Weight", "+0.8 lb"], ["Pregnancy", "Week 24"], ["Next visit", "Oct 10"]],
++    agent: {
++      confidence: "High confidence",
++      insightTitle: "Your pregnancy care is on track.",
++      insightDetail: "You’re entering week 24, with a prenatal visit scheduled this week and your recent blood pressure remaining within your personal range.",
++      idleTitle: "Your pregnancy care is on track",
++      idleDescription: "You’re entering week 24 of pregnancy, with a prenatal visit scheduled this week and recent blood pressure within your personal range.",
++      currentValue: "24",
++      currentUnit: "week",
++      tags: ["Pregnancy week 24", "Prenatal visit this week", "Recent BP in range"],
++      steps: [
++        { number: 1, title: "Reviewing pregnancy milestone", detail: "Current gestational week" },
++        { number: 2, title: "Reviewing recent blood pressure", detail: "Recent maternal vital signs" },
++        { number: 3, title: "Reviewing upcoming prenatal care", detail: "Next scheduled appointment" },
++        { number: 4, title: "Checking whether care signals align", detail: "Comparing timing and recent data" },
++      ],
++      whatNoticed: "You’re entering week 24, your prenatal visit is scheduled this week, and recent blood pressure remains within your personal range.",
++      whatKnow: "The available demo data shows pregnancy progression and recent maternal signals aligned with the current care plan.",
++      whatDontKnow: "The available data cannot determine whether you have symptoms or concerns that should change your care plan.",
++      findingIntro: "Your current pregnancy milestone, recent blood pressure, and upcoming prenatal care are aligned in the available demo data.",
++      findings: [
++        "You’re entering week 24 of pregnancy.",
++        "Your recent blood pressure is 118/72 and remains within your recent range.",
++        "A prenatal visit is scheduled for October 10.",
++        "The available data does not replace guidance from your prenatal care team.",
++      ],
++      evidence: ["Pregnancy milestone · Week 24", "Recent blood pressure · 118/72", "Upcoming prenatal visit · Oct 10"],
++      recommendationTitle: "Keep your scheduled prenatal visit",
++      recommendationDetail: "Your current demo data supports staying on the existing care plan and keeping the upcoming prenatal visit. The agent is not recommending a change based on these signals alone.",
++      recommendationReasons: [
++        { title: "Your care milestone is current", detail: "The dashboard reflects week 24 of pregnancy." },
++        { title: "Recent BP is within range", detail: "The latest demo blood pressure is 118/72." },
++        { title: "Your next visit is scheduled", detail: "The prenatal visit is already scheduled for October 10." },
++      ],
++      monitoringTitle: "Monitoring pregnancy care signals",
++      monitoringDetail: "I’ll keep the current pregnancy milestone, recent maternal signals, and upcoming care in context and surface a new insight if something meaningfully changes.",
++      monitoringBaseline: "BP 118/72",
++      nextCheckIn: "Oct 10",
++    },
++  },
++  alex: {
++    id: "alex",
++    name: "Alex",
++    initials: "AX",
++    status: {
++      label: "Watching",
++      detail: "No urgent signals detected",
++      watchLabel: "Agent watching overnight glucose",
++      watchDetail: "Your overall status is stable while the agent reviews a recent overnight glucose pattern.",
++      updated: "9 minutes ago",
++    },
++    medications: [
++      { name: "Metformin", dose: "500 mg", time: "8:00 AM", status: "Scheduled", tone: "blue" },
++      { name: "Metformin", dose: "500 mg", time: "8:00 PM", status: "Scheduled", tone: "neutral" },
++    ],
++    appointment: {
++      title: "Diabetes follow-up",
++      clinician: "Dr. Marcus Chen",
++      dateTime: "October 15 · 2:00 PM",
++      location: "Baylor Scott & White Endocrinology",
++      preparation: "Bring recent glucose readings",
++    },
++    primaryMetric: {
++      title: "Overnight glucose",
++      subtitle: "personal baseline",
++      latest: "142",
++      latestLabel: "Latest reading · Oct 4",
++      baselineLabel: "Personal baseline",
++      baseline: "95–135 mg/dL",
++      data: alexGlucose,
++      domain: [85, 155],
++      seriesLabel: "Overnight glucose",
++      baselineSeriesLabel: "Personal baseline",
++      accessibility: "Overnight glucose is currently 142 milligrams per deciliter. The personal baseline is 95 to 135 milligrams per deciliter. The chart shows a recent increase.",
++    },
++    connectedSignals: [
++      { label: "Glucose", icon: "droplet", value: "124 → 142", unit: "mg/dL", trend: "↑ Trending", detail: "Overnight readings above baseline", bars: [12, 14, 15, 18, 21, 20, 23, 25, 27, 29] },
++      { label: "Time in range", icon: "activity", value: "76 → 69", unit: "%", detail: "Recent readings are less often in range", bars: [25, 24, 23, 22, 20, 19, 18, 17, 15, 14] },
++      { label: "Activity", icon: "activity", value: "Usual → Lower", detail: "Recent activity is below your usual pattern", bars: [22, 23, 21, 22, 20, 18, 17, 16, 14, 13] },
++    ],
++    baselines: [["Overnight glucose", "95–135 mg/dL"], ["Time in range", "76%"], ["A1C", "6.8%"], ["Activity", "7.2k/day"]],
++    agent: {
++      confidence: "Moderate confidence",
++      insightTitle: "Your glucose has been running higher overnight.",
++      insightDetail: "Your overnight readings have been above your recent baseline for the past several days while activity has been lower than usual.",
++      idleTitle: "Overnight glucose is trending higher",
++      idleDescription: "Your recent overnight readings have moved from around 124 mg/dL to 142 mg/dL. Your personal baseline is currently 95–135 mg/dL.",
++      currentValue: "142",
++      currentUnit: "mg/dL",
++      tags: ["Glucose updated 9 min ago", "Personal baseline", "Several-day trend"],
++      steps: [
++        { number: 1, title: "Reviewing overnight glucose trend", detail: "Recent glucose readings" },
++        { number: 2, title: "Reviewing time in range", detail: "Recent glucose distribution" },
++        { number: 3, title: "Reviewing activity changes", detail: "Recent activity compared with usual" },
++        { number: 4, title: "Checking whether the signals overlap", detail: "Looking for changes during the same period" },
++      ],
++      whatNoticed: "Overnight glucose increased from 124 → 142 mg/dL while time in range decreased from 76% → 69% and recent activity was lower than usual.",
++      whatKnow: "The glucose pattern has been higher overnight for several days and overlaps with lower activity in the available demo data.",
++      whatDontKnow: "The available data cannot determine why glucose is higher or whether meals, medication timing, illness, or another factor contributed.",
++      findingIntro: "I found a recent overnight glucose pattern that is worth watching. The available data does not establish the cause.",
++      findings: [
++        "Overnight glucose increased from 124 → 142 mg/dL.",
++        "Time in range decreased from 76% → 69% during the same period.",
++        "Recent activity was lower than your usual pattern.",
++        "The available data cannot determine what caused the change.",
++      ],
++      evidence: ["Overnight glucose readings · Recent days", "Personal baseline · 95–135 mg/dL", "Time-in-range and activity context"],
++      recommendationTitle: "Continue monitoring overnight glucose for 7 days",
++      recommendationDetail: "Because the change is recent and the available data does not establish the cause, another week of readings can add context before considering a change in care.",
++      recommendationReasons: [
++        { title: "The change is recent", detail: "The overnight pattern has shifted over several days rather than one isolated reading." },
++        { title: "Readings are above baseline", detail: "Your current personal range is 95–135 mg/dL." },
++        { title: "More context can help", detail: "Additional readings alongside activity and other context can clarify whether the pattern persists." },
++      ],
++      monitoringTitle: "Monitoring overnight glucose",
++      monitoringDetail: "I’ll watch new overnight glucose readings, compare them with your personal baseline, and surface a new insight if the pattern meaningfully changes.",
++      monitoringBaseline: "95–135 mg/dL",
++      nextCheckIn: "Oct 11",
++    },
++  },
++};
