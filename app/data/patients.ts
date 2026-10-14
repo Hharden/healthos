@@ -53,6 +53,7 @@ type PatientProfile = {
   id: PatientId;
   name: string;
   initials: string;
+  avatar: string;
 
   status: {
     label: string;
@@ -181,6 +182,7 @@ export const patientProfiles: Record<PatientId, PatientProfile> = {
     id: "jordan",
     name: "Jordan",
     initials: "JD",
+    avatar: "/patients/jordan.jpg",
 
     status: {
       label: "Stable",
@@ -389,6 +391,7 @@ export const patientProfiles: Record<PatientId, PatientProfile> = {
     id: "maya",
     name: "Maya",
     initials: "MY",
+    avatar: "/patients/maya.jpg",
 
     status: {
       label: "On track",
@@ -587,6 +590,7 @@ export const patientProfiles: Record<PatientId, PatientProfile> = {
     id: "alex",
     name: "Alex",
     initials: "AX",
+    avatar: "/patients/alex.jpg",
 
     status: {
       label: "Watching",
