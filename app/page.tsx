@@ -550,11 +550,15 @@ export default function HomePage() {
               </button>
 
               <div
-                aria-label={`${selectedPatient.name} profile`}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-700"
-              >
-                {selectedPatient.initials}
-              </div>
+  aria-label={`${selectedPatient.name} profile`}
+  className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-semibold text-slate-700"
+>
+  <img
+    src={selectedPatient.avatar}
+    alt={`${selectedPatient.name} profile`}
+    className="h-full w-full object-cover"
+  />
+</div>
             </div>
           </header>
 
@@ -1259,7 +1263,7 @@ export default function HomePage() {
             {/* Footer */}
             <footer className="mt-7 flex flex-col gap-2 border-t border-slate-300 pt-5 text-sm leading-5 text-slate-600 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                Independent portfolio concept · Not an official Baylor Scott &
+                Independent portfolio concept by Herb Harden (<a href="https://herbharden.com" target="_blank">herbharden.com</a>) · Not an official Baylor Scott &
                 White product
               </div>
 
